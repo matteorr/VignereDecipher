@@ -1,0 +1,245 @@
+in scientific computing, we never expect to get the exact answer. Inexactness
+is practically the definition of scientific computing. Getting the exact answer,
+generally with integers or rational numbers, is symbolic computing, an interesting
+but distinct subject. Suppose we are trying to compute the number A. The
+computer will produce an approximation, which we call A. This A may agree
+with A to 16 decimal places, but the identity A = A (almost) never is true in
+the mathematical sense, if only because the computer does not have an exact
+representation for A. For example, if we need to find x that satisfies the equation
+x2 − 175 = 0, we might get 13 or 13.22876, depending on the computational
+                √
+method, but 175 cannot be represented exactly as a floating point number.
+     Four primary sources of error are: (i) roundoff error, (ii) truncation error,
+(iii) termination of iterations, and (iv) statistical error in Monte Carlo. We
+will estimate the sizes of these errors, either a priori from what we know in
+advance about the solution, or a posteriori from the computed (approximate)
+solutions themselves. Software development requires distinguishing these errors
+from those caused by outright bugs. In fact, the bug may not be that a formula
+is wrong in a mathematical sense, but that an approximation is not accurate
+enough. This chapter discuss floating point computer arithmetic and the IEEE
+floating point standard. The others are treated later.
+     Scientific computing is shaped by the fact that nothing is exact. A mathe-
+matical formula that would give the exact answer with exact inputs might not
+be robust enough to give an approximate answer with (inevitably) approximate
+inputs. Individual errors that were small at the source might combine and grow
+in the steps of a long computation. Such a method is unstable. A problem is
+ill conditioned if any computational method for it is unstable. Stability theory,
+which is modeling and analysis of error growth, is an important part of scientific
+computin.hhhhh
+1      Relative error, absolute error, and cancella-
+       tion
+The absolute error in approximating A by A is e = A − A. The relative error,
+which is ǫ = e/A, is usually more meaningful. These definitions may be restated
+as
+      A = A + e (absolute error) ,        A = A · (1 + ǫ) (relative error).    (1)
+                                                          √
+For example, the absolute error in approximating A = 175 by A = 13 is e =
+13.22876 · · · − 13 ≈ .23. The corresponding relative error is e/A ≈ .23/13.2 ≈
+.017 < 2%. Saying that the error is less than 2% is probably more informative
+than saying that the error is less than .25 = 1/4.
+     Relative error is a dimensionless measure of error. In practical situations,
+the desired A probably has units, such as seconds, meters, etc. If A is a length
+measured in meters, knowing e ≈ .23 does not tell you whether e is large or
+small. If the correct length is half a meter, then .23 is a large error. If the
+                                         2
+correct length in meters is 13.22876 · · ·, then A is off by less than 2%. If we
+switch to centimeters the error becomes 22.9. This may seem larger, but it still
+is less than 2% of the exact length, 1, 322.876 · · · (in centimeters).
+    We often describe the accuracy of an approximation or measurement by
+saying how many decimal digits are correct. For example, Avogadro’s number
+(the number of molecules in one mole) with two digits of accuracy is N0 ≈
+6.0 × 1023 . We write 6.0 instead of just 6 to indicate that we believe the 0 is
+correct, that the true Avogadro’s number is closer to 6 × 1023 than to 6.1 × 1023
+or 5.9 × 1023 . With three digits the number is N0 ≈ 6.02 × 1023 . In an absolute
+sense, the difference between N0 ≈ 6 × 1023 and N0 ≈ 6.02 × 1023 is 2 × 1021
+molecules per mole, which may seem like a lot, but the relative error is about a
+third of one percent.
+    While relative error is more useful than absolute error, it also is more prob-
+lematic. Relative error can grow through cancellation. For example, suppose
+we know A = B − C and we have evaluated B and C to three decimal digits
+of accuracy. If the first two digits of B and C agree, then they cancel in the
+subtraction, leaving only one correct digit in A. If, say, B ≈ B = 2.38 × 105
+and C ≈ C = 2.33 × 105, then A ≈ A = 5 × 103 . This A is probably off by more
+than 10% even though B and C had relative error less than 1%. Catastrophic
+cancellation is losing many digits in one subtraction. More subtle and more
+common is an accumulation of less dramatic cancellations over a series of steps.
+2      Computer arithmetic
+Error from inexact computer floating point arithmetic is called roundoff error.
+Roundoff error occurs in most floating point operations. Some computations in-
+volve no other approximations. For example, solving systems of linear equations
+using Gaussian elimination would give the exact answer in exact arithmetic (all
+computations performed exactly). Even these computations can be unstable
+and give wrong answers. Being exactly right in exact arithmetic does not imply
+being approximately right in floating point arithmetic.
+    Floating point arithmetic on modern computers is governed by the IEEE
+floating point standard. Following the standard, a floating point operation nor-
+mally has relative error less than the machine precision, but of the same order
+of magnitude. The machine precision is ǫmach ≈ 6 · 10−8 for single precision
+(data type float in C), and ǫmach = 2−53 ≈ 10−16 for double precision (data
+type double in C). Let A = B C, with            standing for one of the arithmetic
+operations: addition (A = B+C), subtraction, multiplication, or division. With
+the same B and C, the computer will produce A with relative error (1) that
+normally satisfies |ǫ| ≤ ǫmach .
+2.1      Introducing the standard
+The IEEE floating point standard is a set of conventions for computer repre-
+sentation and processing of floating point numbers. Modern computers follow
+                                         3
+these standards for the most part. The standard has four main goals:
+   1. To make floating point arithmetic as accurate as possible.
+   2. To produce sensible outcomes in exceptional situations.
+   3. To standardize floating point operations across computers.
+   4. To give the programmer control over exception handling.
+    The standard specifies exactly how numbers are represented in hardware.
+The most basic unit of information that a computer stores is a bit, a variable
+whose value may be either 0 or 1. Bits are organized into 32 bit or 64 bit words,
+or bit strings. The number of 32 bit words is1 232 = 22 · 230 ≈ 4 × (103 )3 = 4
+billion. A typical computer should take well under a minute to list all of them.
+A computer running at 1GHz in theory can perform one billion operations per
+second, though that may not be achieved in practice. The number of 64 bit
+words is about 1.6 · 1019 , which is too many to be listed in a year. A 32 bit
+floating point number is called single precision and has data type float in
+C/++. A 64 bit floating point number is called double precision and has data
+type double.
+    C/C++ also has data types int (for 32 bits) and longint (for 64 bits) that
+represent integers. Integer, or fixed point arithmetic, is very simple. With 32
+bit integers, the 232 ≈ 4 · 109 distinct words represent that many consecutive
+integers, filling the range from about −2 · 109 to about 2 · 109 . Addition, sub-
+traction, and multiplication are done exactly whenever the answer is within this
+range. The result is unpredictable when the answer is out of range (overflow).
+Results of integer division are rounded down to the nearest integer below the
+answer.
+2.2     Representation of numbers, arithmetic operations
+For scientific computing, integer arithmetic has two drawbacks. One is that
+there is no representation for numbers that are not integers. Also important
+is the small range of values. The number of dollars in the US national debt,
+several trillion (1012 ), cannot be represented as a 32 bit integer but is easy to
+approximate in 32 bit floating point.
+    The standard assigns a real number value to each single precision or double
+precision bit string. On a calculator display, the expression:
+                                     −.2491E − 5
+means −2.491 · 10−6 . This expression consists of a sign bit, s = −, a mantissa,
+m = 2491 and an exponent, e = −5. The expression s.mEe corresponds to the
+number s·.m·10e . Scientists like to put the first digit of the mantissa on the left
+of the decimal point (−2.491 ·10−6) while calculators put the whole thing on the
+   1 We use the approximation 210 = 1024 ≈ 103 .
+                                            4
+right (−.2491 · 10−5 ). In base 2 (binary) arithmetic, the scientists’ convention
+saves a bit, see below.
+    When the standard interprets a 32 bit word, the first bit is the sign bit, s = ±.
+The next 8 bits form the exponent2 , e, and the remaining 23 bits determine the
+form the fraction, f . There are two possible signs, 28 = 256 possible values of
+e (ranging from 0 to 255), and 223 ≈ 8 million possible fractions. Normally a
+floating point number has the value
+                                  A = ±2e−127 · (1.f )2 ,                                  (2)
+where f is base 2 and the notation (1.f )2 means that the expression 1.f is inter-
+preted in base 2. Note that the mantissa is 1.f rather than just the fractional
+part, f . Any number (except 0) can be normalized so that its base 2 mantissa
+has the form 1.f . There is no need to store the “1.” explicitly, which saves one
+bit.
+    For example, the number 2.752 · 103 = 2572 can be written
+                  2752 = 211 + 29 + 27 + 26
+                         = 211 · 1 + 2−2 + 2−4 + 2−5
+                         = 211 · (1 + (.01)2 + (.0001)2 + (.00001)2 )
+                         = 211 · (1.01011)2 .
+Altogether, we have, using 11 = (1011)2 ,
+                                                      (1011)2
+                                                              .
+                               2752 = +(1.01011)2
+Thus, we have sign s = +. The exponent is e − 127 = 11 so that e = 138 =
+(10001010)2 . The fraction is f = (01011000000000000000000)2 . The entire 32
+bit string corresponding to 2.752 · 103 then is:
+                       1 10001010 01011000000000000000000                .
+                               e
+                       s                            f
+    For arithmetic operations, the standard mandates the rule: the exact answer,
+correctly rounded. For example, suppose x, y, and z are computer variables of
+type float, and the computer executes the statement x = y / z;. Let B and C
+be the numbers that correspond to the 32 bit strings y and z using the standard
+(2). A number that can be represented exactly in form (2) using 32 bits is a (32
+bit) floating point number. Clearly B and C are floating point numbers, but the
+exact quotient, A = B/C, probably is not. Correct rounding means finding the
+floating point number A closest3 to A. The computer is supposed to set the bit
+string x equal to the bit string representing A. For exceptions to this rule, see
+below.
+   2 This a slight misnomer; the actual exponent is e − 127 (in single precision) exponent.
+   3 Ties can happen. The accuracy of IEEE floating point arithmetic does not depend on
+how ties are resolved.
+                                              5
+    The exact answer correctly rounded rule implies that the only error in float-
+ing point arithmetic comes from rounding the exact answer, A, to the nearest
+floating point number, A. This rounding error is determined by the distance
+between floating point numbers. The greatest rounding is when A is half way
+between neighboring floating point numbers, B− and B+ . For a floating point
+number of the form B− = (1.f− )2 · 2p , the next larger floating point number
+is usually B+ = (1.f+ )2 · 2p , where we get f+ from f− by adding the smallest
+possible fraction, which is 2−23 for 23 bit single precision fractions. The relative
+size of the gap between B− and B+ is, after some algebra,
+                                                            2−23
+                        B+ − B−      (1.f+ )2 − (1.f− )2
+                  γ=               =                     =          .
+                           B−             (1.f− )2         (1.f− )2
+The largest γ is given by the smallest denominator, which is (1.0 · · · 0)2 = 1,
+which gives γmax = 2−23 . The largest rounding error is half the gap size, which
+gives the single precision machine precision ǫmach = 2−24 stated above.
+    The 64 bit double precision floating point format allocates one bit for the
+sign, 11 bits for the exponent, and the remaining 52 bits for the fraction. There-
+fore its floating point precision is given by ǫmach = 2−53 . Double precision arith-
+metic gives roughly 16 decimal digits of accuracy instead of 7 for single preci-
+sion. There are 211 possible exponents in double precision, ranging from 1023
+to −1022. The largest double precision number is of the order of 21023 ≈ 10307 .
+The largest single precision number is about 2126 ≈ 1038 . Not only is dou-
+ble precision arithmetic more accurate than single precision, but the range of
+numbers is far greater.
+2.3     Exceptions
+The extreme exponents, e = 0 and e = 255 in single precision (e = 0 and
+e = 211 − 1 = 2047 in double), are not interpreted using (2). Instead, they have
+carefully engineered interpretations that make the IEEE standard distinctive.
+Numbers with e = 0 are denormalized and have the value
+       A = ±0.f · 2−126 (single precision),       A = ±0.f · 2−1022 (double).
+This feature is called gradual underflow. Underflow is the situation in which
+the result of an operation is not zero but is closer to zero than any normalized
+floating point number. In single precision, the smallest normalized positive
+floating point number is A = (1.0 · · · 0)2 · 2−126 . The nearest floating point
+number in the positive direction is B+ = (1.0 · · · 01)2 · 2−126 . The nearest
+floating point number in the negative direction is the denormalized number
+B− = (0.1 · · · 11)2 · 2−126 . The gap between A and B+ and the gap between B−
+and A both are (0.0 · · · 01)2 · 2−126 = 2−126−23 = 2−149 . Without denormalized
+numbers, A would have a gap of size 2−149 on the right and 2−126 (the space
+between 0 and A) on the left: the left gap would be 223 ≈ 4 billion times larger
+than the gap on the right. Gradual underflow also has the consequence that
+                                           6
+two floating point numbers are equal, x = y, if and only if subtracting one from
+the other gives exactly zero.
+    The other extreme case, e = 255 in single precision, has two subcases, inf
+(for infinity) if f = 0 and NaN (for Not a Number) if f = 0. The C++ statement
+cout << x; produces4 “inf” and “NaN” respectively. An arithmetic operation
+produces inf if the exact answer is larger than the largest floating point number,
+as does 1/x if x = ±0. (Actually 1/ + 0 = +inf and 1/ − 0 = -inf). Invalid
+operations such as sqrt(-1.), log(-4.), produce NaN. Any operation involving
+a NaN produces another NaN. It is planned that f will contain information about
+how or where in the program the NaN was created but this is not standardized
+yet. Operations with inf are common sense: inf + f inite = inf, inf/inf =
+NaN, f inite/inf = 0, inf + inf = inf, inf − inf = NaN.
+    A floating point arithmetic operation is an exception if the result is not a
+normalized floating point number. The standard mandates that a hardware flag
+(a binary bit of memory in the processor) should be set (given the value 1) when
+an exception occurs. There should be a separate flag for the underflow, inf, and
+NaN exceptions. The programmer should be able to specify what happens when
+an exception flag is set. Either the program execution continues without inter-
+ruption or an exception handler procedure is called. The programmer should
+be able to write procedures that interface with the exception handler to find
+out what happened and take appropriate action. Only the most advanced and
+determined programmer will be able to do this. The rest of us have the worst
+of both: the exception handler is called, which slows the program execution but
+does nothing useful.
+    Many features of IEEE arithmetic are illustrated in Figure 1. Note that e204
+gives inf in single precision but not in double precision because the range of
+values is larger in double precision. We see that inf and NaN work as promised.
+The main rule, “exact answer correctly rounded”, explains why adding pairs
+of floating point numbers is commutative: the mathematical sums are equal so
+they round to the same floating point number. This does not force addition to
+be associative, which it is not. Multiplication also is commutative but not asso-
+ciative. The division operator gives integer or floating point division depending
+on the types of the operands. Integer arithmetic truncates the result to the next
+lower integer rather than rounding it to the nearest integer.
+
